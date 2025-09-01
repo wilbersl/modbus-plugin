@@ -4,7 +4,7 @@ loglevel="INFO"
 #combinemeasurements=true # if not set equals false; combines all measurements of a device to reduce the number of created measurements in the cloud
 
 [serial]
-interface="/dev/ttyRS485"
+port="/dev/ttyRS485"
 baudrate=9600
 stopbits=2
 parity="N"
