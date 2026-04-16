@@ -423,3 +423,73 @@ class TestMapperOnChange(unittest.TestCase):
         )
         data = json.loads(messages[0].data)
         self.assertAlmostEqual(data["temp"], 60.0)
+
+    def test_custom_topic_mapping(self):
+        register_def = {
+            "number": 100,
+            "startbit": 0,
+            "nobits": 16,
+            "signed": False,
+            "eventmapping": {
+                "text": "This event tests the event mapping",
+                "type": "TestEvent",
+                "topic": "local/device/CHILD_ID///e/TYPE",
+            },
+        }
+        register_def2 = {
+            "number": 101,
+            "startbit": 0,
+            "nobits": 16,
+            "signed": False,
+            "alarmmapping": {
+                "text": "This event tests the event mapping",
+                "topic": "local/device/CHILD_ID///a/TYPE",
+                "severity":"MAJOR",
+                "type":"TestAlarm"
+            },
+        }
+        register_def3 = {
+            "number": 102,
+            "startbit": 0,
+            "nobits": 16,
+            "signed": False,
+            "measurementmapping": {
+                "topic": "local/device/CHILD_ID///m/TYPE",
+                "templatestring":"{\"Test\":{\"Int16\":%% }}",
+                "type": "TestMeasurement"
+            },
+        }
+        register_def4 = {
+            "number": 103,
+            "startbit": 0,
+            "nobits": 16,
+            "signed": False,
+            "measurementmapping": {
+                "topic": "local/device/CHILD_ID///m/TYPE",
+                "templatestring":"{\"Test\":{\"Int16\":%% }}"
+            },
+        }
+
+        messages, _ = self.mapper.map_register(
+            read_register=[1], register_def=register_def
+        )
+        topics = [message.topic for message in messages]
+        self.assertTrue("local/device/test_device///e/TestEvent" in topics)
+
+        messages2, _ = self.mapper.map_register(
+            read_register=[1], register_def=register_def2
+        )
+        topics2 = [message.topic for message in messages2]
+        self.assertTrue("local/device/test_device///a/TestAlarm" in topics2)
+
+        messages3, _ = self.mapper.map_register(
+            read_register=[1], register_def=register_def3
+        )
+        topics3 = [message.topic for message in messages3]
+        self.assertTrue("local/device/test_device///m/TestMeasurement" in topics3)
+
+        messages4, _ = self.mapper.map_register(
+            read_register=[1], register_def=register_def4
+        )
+        topics4 = [message.topic for message in messages4]
+        self.assertTrue("local/device/test_device///m/" in topics4)
