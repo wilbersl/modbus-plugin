@@ -26,6 +26,8 @@ name="Test_Int16"
 #see https://thin-edge.github.io/thin-edge.io/html/architecture/thin-edge-json.html
 measurementmapping.templatestring="{\"Test\":{\"Int16\":%% }}" # tedge JSON format string, %% will be replaced with the calculated value
 #measurementmapping.combinemeasurements=true # Overrides device setting; Combines all measurements of a device to reduce the number of created measurements in the cloud
+#measurementmapping.topic="local/device/CHILD_ID///m/TYPE" # Overwrites standard topic "te/device/CHILD_ID///m/TYPE", CHILD_ID and TYPE are replaced by device.name and measurementmapping.type
+#measurementmapping.type="ProcessData" # Option to post other measurement types than "ThinEdgeMeasurement"
 #on_change=true # Send data only on value change
 
 [[device.registers]]
