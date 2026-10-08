@@ -45,8 +45,15 @@ contents:
     mode: 0644
 
 # SystemD Unit File
-- src: ./tedge-modbus-plugin.service
+- src: ./systemd-service/tedge-modbus-plugin.service
   dst: /lib/systemd/system/tedge-modbus-plugin.service
+  file_info:
+      mode: 0644
+      owner: root
+
+# Sudoer entrys for SystemD service
+- src: ./systemd-service/tedge-modbus-plugin.sudoers
+  dst: /etc/sudoers.d/tedge-modbus-plugin
   file_info:
       mode: 0644
       owner: root

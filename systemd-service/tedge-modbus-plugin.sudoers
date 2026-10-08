@@ -1,0 +1,6 @@
+tedge ALL=NOPASSWD: /bin/systemctl status tedge-modbus-plugin.service
+tedge ALL=NOPASSWD: /bin/systemctl restart tedge-modbus-plugin.service
+tedge ALL=NOPASSWD: /bin/systemctl start tedge-modbus-plugin.service
+tedge ALL=NOPASSWD: /bin/systemctl stop tedge-modbus-plugin.service
+tedge ALL=NOPASSWD: /bin/systemctl enable tedge-modbus-plugin.service
+tedge ALL=NOPASSWD: /bin/systemctl disable tedge-modbus-plugin.service

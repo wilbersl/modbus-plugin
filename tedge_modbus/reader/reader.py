@@ -614,7 +614,20 @@ class ModbusPoll:
         """Register the service with thin-edge.io"""
         self.logger.debug("Register tedge service on device")
         topic = "te/device/main/service/tedge-modbus-plugin"
-        data = {"@type": "service", "name": "tedge-modbus-plugin", "type": "service"}
+        data = {
+            "@type": "service", 
+            "name": "tedge-modbus-plugin", 
+            "type": "service",
+            "serviceType": "systemd",
+            "status": "up",
+            "c8y_SupportedServiceCommands": [
+                "START",
+                "STOP",
+                "RESTART",
+                "ENABLE",
+                "DISABLE"
+            ],
+            }
         self.send_tedge_message(
             MappedMessage(json.dumps(data), topic), retain=True, qos=1
         )
