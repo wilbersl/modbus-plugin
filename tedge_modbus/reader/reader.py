@@ -14,7 +14,6 @@ import tomli
 from paho.mqtt import client as mqtt_client
 from pymodbus.client import ModbusTcpClient, ModbusSerialClient
 from pymodbus.exceptions import ConnectionException, ModbusIOException
-from pymodbus.constants import Defaults
 from watchdog.events import FileSystemEventHandler, DirModifiedEvent, FileModifiedEvent
 from watchdog.observers import Observer
 
@@ -302,19 +301,15 @@ class ModbusPoll:
                 stopbits=device["stopbits"],
                 parity=device["parity"],
                 bytesize=device["databits"],
-                timeout=device.get("timeout", Defaults.Timeout),
-                retries=device.get("retries", Defaults.Retries),
+                timeout=device.get("timeout", 3),
+                retries=device.get("retries", 3),
             )
         if device["protocol"] == "TCP":
             return ModbusTcpClient(
                 host=device["ip"],
                 port=device["port"],
-                timeout=device.get("timeout", Defaults.Timeout),
-                retries=device.get("retries", Defaults.Retries),
-                # TODO: Check if these parameters really supported by ModbusTcpClient?
-                auto_open=True,
-                auto_close=True,
-                debug=True,
+                timeout=device.get("timeout", 3),
+                retries=device.get("retries", 3),
             )
         raise ValueError(
             "Expected protocol to be RTU or TCP. Got " + device["protocol"] + "."
