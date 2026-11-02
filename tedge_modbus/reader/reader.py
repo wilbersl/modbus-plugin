@@ -216,7 +216,7 @@ class ModbusPoll:
             "combinemeasurements",
             self.base_config["modbus"].get("combinemeasurements", False),
         )
-        combined_measuerement = None
+        combined_measuerements = {}
         if error is None:
             # handle all Registers
             if device.get("registers") is not None:
@@ -245,10 +245,11 @@ class ModbusPoll:
                         msgs, temp = mapper.map_register(
                             result, register_definition, device_combine_measurements
                         )
-                        if combined_measuerement is not None and temp is not None:
-                            combined_measuerement.extend_data(temp)
-                        elif temp is not None:
-                            combined_measuerement = temp
+                        if temp is not None:
+                            try:
+                                combined_measuerements[temp.topic].extend_data(temp)
+                            except KeyError:
+                                combined_measuerements[temp.topic] = temp
                         for msg in msgs:
                             self.send_tedge_message(msg)
                     except Exception as e:
@@ -256,7 +257,7 @@ class ModbusPoll:
 
             # send combined measurement if any
             try:
-                if combined_measuerement is not None:
+                for combined_measuerement in combined_measuerements.values():
                     self.send_tedge_message(combined_measuerement)
             except Exception as e:
                 self.logger.error("Failed to send combined measurement: %s", e)
