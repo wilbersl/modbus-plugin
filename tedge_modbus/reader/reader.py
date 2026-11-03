@@ -216,7 +216,7 @@ class ModbusPoll:
             "combinemeasurements",
             self.base_config["modbus"].get("combinemeasurements", False),
         )
-        combined_measuerement = None
+        combined_measuerements = {}
         if error is None:
             # handle all Registers
             if device.get("registers") is not None:
@@ -245,10 +245,10 @@ class ModbusPoll:
                         msgs, temp = mapper.map_register(
                             result, register_definition, device_combine_measurements
                         )
-                        if combined_measuerement is not None and temp is not None:
-                            combined_measuerement.extend_data(temp)
-                        elif temp is not None:
-                            combined_measuerement = temp
+                        if temp is not None:
+                            combined_measuerements.setdefault(
+                                temp.topic, temp
+                            ).extend_data(temp)
                         for msg in msgs:
                             self.send_tedge_message(msg)
                     except Exception as e:
@@ -267,11 +267,13 @@ class ModbusPoll:
                             result = self.read_register(
                                 coil_results, address=coil_number, count=1
                             )
-                        msgs, temp = mapper.map_coil(result, coil_def, device_combine_measurements)
-                        if combined_measuerement is not None and temp is not None:
-                            combined_measuerement.extend_data(temp)
-                        elif temp is not None:
-                            combined_measuerement = temp
+                        msgs, temp = mapper.map_coil(
+                            result, coil_def, device_combine_measurements
+                        )
+                        if temp is not None:
+                            combined_measuerements.setdefault(
+                                temp.topic, temp
+                            ).extend_data(temp)
                         for msg in msgs:
                             self.send_tedge_message(msg)
                     except Exception as e:
@@ -279,8 +281,8 @@ class ModbusPoll:
 
             # send combined measurement if any
             try:
-                if combined_measuerement is not None:
-                    self.send_tedge_message(combined_measuerement)
+                for measurement in combined_measuerements.values():
+                    self.send_tedge_message(measurement)
             except Exception as e:
                 self.logger.error("Failed to send combined measurement: %s", e)
 

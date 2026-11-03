@@ -396,3 +396,89 @@ class TestReaderPollingInterval(unittest.TestCase):
             ),
             1,
         )
+
+    def test_measurement_combination_with_several_topics(self):
+        """
+        GIVEN measurement combination
+        AND a custom measurement topics are used
+        WHEN poll_device is called
+        THEN there should be only one send_tedge_message call per custom topic measurements.
+        """
+        # GIVEN no global measurement combination
+        self.poll.base_config = {
+            "modbus": {"pollinterval": 5, "combinemeasurements": True}
+        }  # This should be used
+        # AND a device with defined measurement combination with two or more registers with defined measurements
+        device_config = {
+            "name": "test_device",
+            "registers": [
+                {
+                    "number": 0,
+                    "startbit": 0,
+                    "nobits": 16,
+                    "signed": False,
+                    "on_change": False,
+                    "measurementmapping": {
+                        "templatestring": '{"sensor1":{"temp":%% }}'
+                    },
+                },
+                {
+                    "number": 1,
+                    "startbit": 0,
+                    "nobits": 16,
+                    "signed": False,
+                    "on_change": False,
+                    "measurementmapping": {
+                        "templatestring": '{"sensor2":{"temp":%% }}'
+                    },
+                },
+                {
+                    "number": 2,
+                    "startbit": 0,
+                    "nobits": 16,
+                    "signed": False,
+                    "on_change": False,
+                    "measurementmapping": {
+                        "topic": "local/device/CHILD_ID///m/TYPE",
+                        "templatestring": '{"sensor2":{"temp":%% }}',
+                    },
+                },
+                {
+                    "number": 3,
+                    "startbit": 0,
+                    "nobits": 16,
+                    "signed": False,
+                    "on_change": False,
+                    "measurementmapping": {
+                        "topic": "local/device/CHILD_ID///m/TYPE",
+                        "templatestring": '{"sensor3":{"temp":%% }}',
+                    },
+                },
+            ],
+        }
+
+        mapper = ModbusMapper(device_config)
+
+        mock_poll_model = MagicMock()
+        self.poll.send_tedge_message = MagicMock()
+
+        # WHEN poll_device is called
+        with patch.object(
+            self.poll,
+            "get_data_from_device",
+            return_value=(None, None, [15, 22, 16, 80], None, None),
+        ):
+            self.poll.poll_device(device_config, mock_poll_model, mapper)
+
+        # THEN there should be two send_tedge_message call containing measurements
+        self.assertEqual(
+            len(
+                [
+                    ele
+                    for ele in self.poll.send_tedge_message.call_args_list
+                    if ele[0][0].topic
+                    in ["te/device/test_device///m/", "local/device/test_device///m/"]
+                ]
+            ),
+            2,
+        )

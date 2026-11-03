@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from dataclasses import dataclass
 
 topics = {
-    "measurement": "te/device/CHILD_ID///m/",
+    "measurement": "te/device/CHILD_ID///m/TYPE",
     "event": "te/device/CHILD_ID///e/TYPE",
     "alarm": "te/device/CHILD_ID///a/TYPE",
 }
@@ -141,13 +141,14 @@ class ModbusMapper:
                 / (register_def.get("divisor") or 1)
             ) + (register_def.get("offset") or 0)
 
-            if register_def.get("min") is not None:
-                if scaled_value < register_def.get("min"):
-                    return messages, separate_measurement
-
-            if register_def.get("max") is not None:
-                if scaled_value > register_def.get("max"):
-                    return messages, separate_measurement
+            if (
+                register_def.get("min") is not None
+                and scaled_value < register_def.get("min", 0)
+            ) or (
+                register_def.get("max") is not None
+                and scaled_value > register_def.get("max", 0)
+            ):
+                return messages, separate_measurement
 
             on_change = register_def.get("on_change", False)
 
@@ -168,24 +169,22 @@ class ModbusMapper:
                 data = register_def["measurementmapping"]["templatestring"].replace(
                     "%%", str(scaled_value)
                 )
-                if register_def["measurementmapping"].get(
+
+                topic = register_def["measurementmapping"].get(
+                    "topic", topics["measurement"]
+                )
+                topic = topic.replace("CHILD_ID", self.device.get("name"))
+                topic = topic.replace(
+                    "TYPE", register_def["measurementmapping"].get("type", "")
+                )
+
+                separate_measurement = MappedMessage(data, topic)
+
+                if not register_def["measurementmapping"].get(
                     "combinemeasurements", device_combine_measurements
                 ):
-                    separate_measurement = MappedMessage(
-                        data,
-                        topics["measurement"].replace(
-                            "CHILD_ID", self.device.get("name")
-                        ),
-                    )
-                else:
-                    messages.append(
-                        MappedMessage(
-                            data,
-                            topics["measurement"].replace(
-                                "CHILD_ID", self.device.get("name")
-                            ),
-                        )
-                    )
+                    messages.append(separate_measurement)
+                    separate_measurement = None
 
             value = scaled_value
         if register_def.get("alarmmapping") is not None:
@@ -234,9 +233,7 @@ class ModbusMapper:
                 if not coil_definition["measurementmapping"].get(
                     "combinemeasurements", device_combine_measurements
                 ):
-                    messages.append(
-                        separate_measurement
-                    )
+                    messages.append(separate_measurement)
                     separate_measurement = None
 
         if coil_definition.get("alarmmapping") is not None:
@@ -269,7 +266,7 @@ class ModbusMapper:
             severity = alarm_mapping["severity"].lower()
             alarm_type = alarm_mapping.get("type", "")
             text = alarm_mapping["text"]
-            topic = topics["alarm"]
+            topic = alarm_mapping.get("topic", topics["alarm"])
             topic = topic.replace("CHILD_ID", self.device.get("name"))
             topic = topic.replace("TYPE", alarm_type)
             data = {
@@ -279,7 +276,11 @@ class ModbusMapper:
             }
             messages.append(MappedMessage(json.dumps(data), topic))
         # clear alarm when bit returns to 0 and alarmmapping.clear = True
-        if alarm_mapping.get("clear", False) and (old_data is None or old_data > 0) and value == 0:
+        if (
+            alarm_mapping.get("clear", False)
+            and (old_data is None or old_data > 0)
+            and value == 0
+        ):
             alarm_type = alarm_mapping.get("type", "")
             topic = alarm_mapping.get("topic", topics["alarm"])
             topic = topic.replace("CHILD_ID", self.device.get("name"))
@@ -295,7 +296,7 @@ class ModbusMapper:
         if old_data is None or old_data != value:
             eventtype = event_mapping.get("type", "")
             text = event_mapping["text"]
-            topic = topics["event"]
+            topic = event_mapping.get("topic", topics["event"])
             topic = topic.replace("CHILD_ID", self.device.get("name"))
             topic = topic.replace("TYPE", eventtype)
             data = {"text": text, "time": datetime.now(timezone.utc).isoformat()}
