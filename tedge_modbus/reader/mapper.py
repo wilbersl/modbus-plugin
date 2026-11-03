@@ -141,6 +141,14 @@ class ModbusMapper:
                 / (register_def.get("divisor") or 1)
             ) + (register_def.get("offset") or 0)
 
+            if register_def.get("min") is not None:
+                if scaled_value < register_def.get("min"):
+                    return messages, separate_measurement
+
+            if register_def.get("max") is not None:
+                if scaled_value > register_def.get("max"):
+                    return messages, separate_measurement
+
             on_change = register_def.get("on_change", False)
 
             last_value = self.data.get(register_type, {}).get(register_key)

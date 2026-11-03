@@ -20,6 +20,8 @@ divisor=1
 decimalshiftright=0
 offset=-20 # will be added to the value after the multiplier/divisor and decimalshiftright have been applied, negative offset gets subtracted
 input=false # true = Input Register false = Holding Register
+#min=0 # limit for allowed value
+#max=200 # limit for allowed value
 name="Test_Int16"
 #see https://thin-edge.github.io/thin-edge.io/html/architecture/thin-edge-json.html
 measurementmapping.templatestring="{\"Test\":{\"Int16\":%% }}" # tedge JSON format string, %% will be replaced with the calculated value

@@ -650,3 +650,31 @@ class TestMapperOnChange(unittest.TestCase):
         )
         data = json.loads(messages[0].data)
         self.assertAlmostEqual(data["temp"], 60.0)
+
+    def test_min_max_measurements(self):
+        register_def = {
+            "number": 100,
+            "startbit": 0,
+            "nobits": 16,
+            "offset": 0,
+            "signed": True,
+            "min": -20,
+            "max": 120,
+            "measurementmapping": {"templatestring": '{"temp": %%}'},
+        }
+
+        messages, _ = self.mapper.map_register(
+            read_register=[50], register_def=register_def
+        )
+        data = json.loads(messages[0].data)
+        self.assertAlmostEqual(data["temp"], 50.0)
+
+        messages2, _ = self.mapper.map_register(
+            read_register=[-30], register_def=register_def
+        )
+        self.assertEqual(len(messages2), 0)
+
+        messages3, _ = self.mapper.map_register(
+            read_register=[130], register_def=register_def
+        )
+        self.assertEqual(len(messages3), 0)
