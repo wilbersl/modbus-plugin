@@ -546,7 +546,7 @@ class ModbusPoll:
                 broker = self.base_config["thinedge"]["mqtthost"]
                 port = self.base_config["thinedge"]["mqttport"]
                 client_id = "modbus-client"
-                client = mqtt_client.Client(client_id)
+                client = mqtt_client.Client(client_id=client_id)
 
                 # Set up callbacks
                 client.on_connect = self.on_connect
