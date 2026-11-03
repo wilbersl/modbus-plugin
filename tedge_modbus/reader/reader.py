@@ -254,13 +254,6 @@ class ModbusPoll:
                     except Exception as e:
                         self.logger.error("Failed to map register: %s", e)
 
-            # send combined measurement if any
-            try:
-                if combined_measuerement is not None:
-                    self.send_tedge_message(combined_measuerement)
-            except Exception as e:
-                self.logger.error("Failed to send combined measurement: %s", e)
-
             # all Coils
             if device.get("coils") is not None:
                 for coil_def in device["coils"]:
@@ -274,11 +267,23 @@ class ModbusPoll:
                             result = self.read_register(
                                 coil_results, address=coil_number, count=1
                             )
-                        msgs = mapper.map_coil(result, coil_def)
+                        msgs, temp = mapper.map_coil(result, coil_def, device_combine_measurements)
+                        if combined_measuerement is not None and temp is not None:
+                            combined_measuerement.extend_data(temp)
+                        elif temp is not None:
+                            combined_measuerement = temp
                         for msg in msgs:
                             self.send_tedge_message(msg)
                     except Exception as e:
                         self.logger.error("Failed to map coils: %s", e)
+
+            # send combined measurement if any
+            try:
+                if combined_measuerement is not None:
+                    self.send_tedge_message(combined_measuerement)
+            except Exception as e:
+                self.logger.error("Failed to send combined measurement: %s", e)
+
         else:
             self.logger.error("Failed to poll device %s: %s", device["name"], error)
 

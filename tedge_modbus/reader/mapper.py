@@ -195,12 +195,40 @@ class ModbusMapper:
 
         return messages, separate_measurement
 
-    def map_coil(self, bits, coil_definition):
+    def map_coil(self, bits, coil_definition, device_combine_measurements=False):
         """Map coil"""
         messages = []
+        separate_measurement = None
         register_type = "di" if coil_definition.get("input") else "co"
         register_key = coil_definition["number"]
         value = 1 if bits[0] else 0
+
+        if coil_definition.get("measurementmapping") is not None:
+            on_change = coil_definition.get("on_change", False)
+            old_data = self.data.get(register_type).get(register_key)
+            if not on_change or old_data is None or old_data != value:
+                data = coil_definition["measurementmapping"]["templatestring"].replace(
+                    "%%", str(value)
+                )
+
+                topic = coil_definition["measurementmapping"].get(
+                    "topic", topics["measurement"]
+                )
+                topic = topic.replace("CHILD_ID", self.device.get("name"))
+                topic = topic.replace(
+                    "TYPE", coil_definition["measurementmapping"].get("type", "")
+                )
+
+                separate_measurement = MappedMessage(data, topic)
+
+                if not coil_definition["measurementmapping"].get(
+                    "combinemeasurements", device_combine_measurements
+                ):
+                    messages.append(
+                        separate_measurement
+                    )
+                    separate_measurement = None
+
         if coil_definition.get("alarmmapping") is not None:
             messages.extend(
                 self.check_alarm(
@@ -220,7 +248,7 @@ class ModbusMapper:
                 )
             )
         self.data[register_type][register_key] = value
-        return messages
+        return messages, separate_measurement
 
     def check_alarm(self, value, alarm_mapping, register_type, register_key):
         """Check alarm"""
