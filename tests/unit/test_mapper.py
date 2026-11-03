@@ -48,6 +48,29 @@ class TestMapperOnChange(unittest.TestCase):
         data2 = json.loads(messages[0].data)
         self.assertAlmostEqual(data2["temp"], 456.0)
 
+        coil_def = {
+            "number": 100,     
+            "on_change": True,
+            "measurementmapping": {"templatestring": '{"fan": %%}'},
+        }
+
+        # First poll: Should always publish
+        messages2, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+
+        self.assertEqual(len(messages2), 1, "Should publish on first poll")
+        data2 = json.loads(messages2[0].data)
+        self.assertAlmostEqual(data2["fan"], 1)
+
+        # Second poll with a different value: Should publish
+        messages3, _ = self.mapper.map_coil(
+            bits=[False], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages3), 1, "Should publish when value changes")
+        data3 = json.loads(messages3[0].data)
+        self.assertAlmostEqual(data3["fan"], 0)
+
     def test_on_change_true_and_value_is_same(self):
         register_def = {
             "number": 100,
@@ -69,6 +92,24 @@ class TestMapperOnChange(unittest.TestCase):
             read_register=[123], register_def=register_def
         )
         self.assertEqual(len(messages), 0, "Should not publish when value is unchanged")
+
+        coil_def = {
+            "number": 100,     
+            "on_change": True,
+            "measurementmapping": {"templatestring": '{"fan": %%}'},
+        }
+
+        # First poll: Should always publish
+        messages2, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages2), 1, "Should publish on first poll")
+
+        # Second poll with the same value: should NOT publish
+        messages3, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages3), 0, "Should not publish when value is unchanged")
 
     def test_on_change_false_and_value_is_same(self):
         register_def = {
@@ -92,6 +133,24 @@ class TestMapperOnChange(unittest.TestCase):
             len(messages), 1, "Should always publish when on_change is false"
         )
 
+        coil_def = {
+            "number": 100,     
+            "on_change": False,
+            "measurementmapping": {"templatestring": '{"fan": %%}'},
+        }
+
+        # First poll: Should always publish
+        messages2, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages2), 1, "Should publish on first poll")
+
+        # Second poll with the same value: should NOT publish
+        messages3, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages3), 1, "Should not publish when value is unchanged")
+
     def test_on_change_not_present_and_value_is_same(self):
         register_def = {
             "number": 100,
@@ -112,6 +171,23 @@ class TestMapperOnChange(unittest.TestCase):
         self.assertEqual(
             len(messages), 1, "Should default to on_change=false and always publish"
         )
+
+        coil_def = {
+            "number": 100,     
+            "measurementmapping": {"templatestring": '{"fan": %%}'},
+        }
+
+        # First poll: Should always publish
+        messages2, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages2), 1, "Should publish on first poll")
+
+        # Second poll with the same value: should NOT publish
+        messages3, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        self.assertEqual(len(messages3), 1, "Should not publish when value is unchanged")
 
     def test_on_change_with_float_values(self):
         def float_to_regs(f_val):
@@ -195,7 +271,7 @@ class TestMapperOnChange(unittest.TestCase):
 
         self.mapper.map_register(read_register=[0], register_def=register_def)
         # Second poll: Check if Measurements get separated
-        messages, measurement3 = self.mapper.map_register(
+        messages, measurement = self.mapper.map_register(
             read_register=[1],
             register_def=register_def,
             device_combine_measurements=True,
@@ -204,6 +280,47 @@ class TestMapperOnChange(unittest.TestCase):
         self.assertTrue("te/device/test_device///m/" not in topics)
         self.assertTrue("te/device/test_device///e/TestEvent" in topics)
         self.assertTrue("te/device/test_device///a/TestAlarm" in topics)
+
+        self.assertTrue("te/device/test_device///m/" in measurement.topic)
+        self.assertTrue("te/device/test_device///e/TestEvent" not in measurement.topic)
+        self.assertTrue("te/device/test_device///a/TestAlarm" not in measurement.topic)
+        
+        coil_def = {
+            "number": 100,     
+            "on_change": False,
+            "measurementmapping": {"templatestring": '{"fan": %%}'},
+            "alarmmapping": {
+                "severity": "MAJOR",
+                "text": "This alarm should be created once",
+                "type": "TestAlarm",
+            },
+            "eventmapping": {
+                "text": "This event should be created once",
+                "type": "TestEvent",
+            },
+        }
+
+        # First poll: Should always publish
+        messages2, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        topics2 = [message.topic for message in messages2]
+        self.assertTrue("te/device/test_device///m/" in topics2)
+        self.assertTrue("te/device/test_device///e/TestEvent" in topics2)
+        self.assertTrue("te/device/test_device///a/TestAlarm" in topics2)
+
+        self.mapper.map_coil(
+            bits=[False], coil_definition=coil_def
+        )
+        # Second poll with the same value: should NOT publish
+        messages3, measurement3 = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def, 
+            device_combine_measurements=True,
+        )
+        topics3 = [message.topic for message in messages3]
+        self.assertTrue("te/device/test_device///m/" not in topics3)
+        self.assertTrue("te/device/test_device///e/TestEvent" in topics3)
+        self.assertTrue("te/device/test_device///a/TestAlarm" in topics3)
 
         self.assertTrue("te/device/test_device///m/" in measurement3.topic)
         self.assertTrue("te/device/test_device///e/TestEvent" not in measurement3.topic)
@@ -302,6 +419,44 @@ class TestMapperOnChange(unittest.TestCase):
         self.assertEqual(alarm_data2["severity"], "major")
         self.assertEqual(alarm_data2["text"], "This alarm tests the alarm mapping")
 
+        coil_def = {
+            "number": 100,
+            "signed": False,
+            "alarmmapping": {
+                "severity": "MAJOR",
+                "text": "This alarm tests the alarm mapping",
+                "type": "TestAlarm",
+            },
+        }
+        coil_def2 = {
+            "number": 101,
+            "signed": False,
+            "alarmmapping": {
+                "severity": "MAJOR",
+                "text": "This alarm tests the alarm mapping",
+            },
+        }
+
+        messages3, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        topics3 = [message.topic for message in messages3]
+        self.assertTrue("te/device/test_device///a/TestAlarm" in topics3)
+        self.assertEqual(len(messages3), 1)
+        alarm_data3 = json.loads(messages3[0].data)
+        self.assertEqual(alarm_data3["severity"], "major")
+        self.assertEqual(alarm_data3["text"], "This alarm tests the alarm mapping")
+
+        messages4, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def2
+        )
+        topics4 = [message.topic for message in messages4]
+        self.assertTrue("te/device/test_device///a/" in topics4)
+        self.assertEqual(len(messages4), 1)
+        alarm_data4 = json.loads(messages4[0].data)
+        self.assertEqual(alarm_data4["severity"], "major")
+        self.assertEqual(alarm_data4["text"], "This alarm tests the alarm mapping")
+
     def test_event_mapping(self):
         register_def = {
             "number": 100,
@@ -340,6 +495,41 @@ class TestMapperOnChange(unittest.TestCase):
         self.assertEqual(len(messages2), 1)
         event_data2 = json.loads(messages2[0].data)
         self.assertEqual(event_data2["text"], "This event tests the event mapping")
+
+        coil_def = {
+            "number": 100,
+            "signed": False,
+            "eventmapping": {
+                "text": "This event tests the event mapping",
+                "type": "TestEvent",
+            },
+        }
+
+        coil_def2 = {
+            "number": 101,
+            "signed": False,
+            "eventmapping": {
+                "text": "This event tests the event mapping",
+            },
+        }
+
+        messages3, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def
+        )
+        topics3 = [message.topic for message in messages3]
+        self.assertTrue("te/device/test_device///e/TestEvent" in topics3)
+        self.assertEqual(len(messages3), 1)
+        event_data3 = json.loads(messages3[0].data)
+        self.assertEqual(event_data3["text"], "This event tests the event mapping")
+
+        messages4, _ = self.mapper.map_coil(
+            bits=[True], coil_definition=coil_def2
+        )
+        topics4 = [message.topic for message in messages4]
+        self.assertTrue("te/device/test_device///e/" in topics4)
+        self.assertEqual(len(messages4), 1)
+        event_data4 = json.loads(messages4[0].data)
+        self.assertEqual(event_data4["text"], "This event tests the event mapping")
 
     def test_value_scaling_combined(self):
         register_def = {
