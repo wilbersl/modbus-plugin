@@ -47,4 +47,5 @@ input=false
 alarmmapping.severity="MAJOR"
 alarmmapping.text="This alarm should be created once"
 alarmmapping.type="TestAlarm"
+#alarmmapping.clear=true # clears the alarm if the bit returns to 0
 name="TestAlarm"

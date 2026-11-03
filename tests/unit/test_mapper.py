@@ -457,6 +457,43 @@ class TestMapperOnChange(unittest.TestCase):
         self.assertEqual(alarm_data4["severity"], "major")
         self.assertEqual(alarm_data4["text"], "This alarm tests the alarm mapping")
 
+    def test_alarm_clearing(self):
+        register_def = {
+            "number": 100,
+            "startbit": 0,
+            "nobits": 16,
+            "signed": False,
+            "alarmmapping": {
+                "severity": "MAJOR",
+                "text": "This alarm tests the alarm mapping",
+                "type": "TestAlarm",
+                "clear": True,
+            },
+        }
+        register_def2 = {
+            "number": 101,
+            "startbit": 0,
+            "nobits": 16,
+            "signed": False,
+            "alarmmapping": {
+                "severity": "MAJOR",
+                "text": "This alarm tests the alarm mapping",
+            },
+        }
+
+        messages, _ = self.mapper.map_register(
+            read_register=[0], register_def=register_def
+        )
+        topics = [message.topic for message in messages]
+        self.assertTrue("te/device/test_device///a/TestAlarm" in topics)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].data, "")
+
+        messages2, _ = self.mapper.map_register(
+            read_register=[0], register_def=register_def2
+        )
+        self.assertEqual(len(messages2), 0)
+
     def test_event_mapping(self):
         register_def = {
             "number": 100,

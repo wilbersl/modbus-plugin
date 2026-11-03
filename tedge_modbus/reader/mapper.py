@@ -26,6 +26,8 @@ class MappedMessage:
         """Serialize message adding time if not present"""
         if "/cmd/" in self.topic:
             return self.data
+        if self.data == "":
+            return self.data
         out = json.loads(self.data)
         if "time" not in out:
             out["time"] = datetime.now(timezone.utc).isoformat()
@@ -268,6 +270,13 @@ class ModbusMapper:
                 "time": datetime.now(timezone.utc).isoformat(),
             }
             messages.append(MappedMessage(json.dumps(data), topic))
+        # clear alarm when bit returns to 0 and alarmmapping.clear = True
+        if alarm_mapping.get("clear", False) and (old_data is None or old_data > 0) and value == 0:
+            alarm_type = alarm_mapping.get("type", "")
+            topic = alarm_mapping.get("topic", topics["alarm"])
+            topic = topic.replace("CHILD_ID", self.device.get("name"))
+            topic = topic.replace("TYPE", alarm_type)
+            messages.append(MappedMessage("", topic))
         return messages
 
     def check_event(self, value, event_mapping, register_type, register_key):
