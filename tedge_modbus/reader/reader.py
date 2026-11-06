@@ -587,6 +587,13 @@ class ModbusPoll:
                     MappedMessage(json.dumps(payload_data), topic), retain=True, qos=1
                 )
 
+        elif "///cmd/health/check" in topic:
+            topic = "te/device/main/service/tedge-modbus-plugin/status/health"
+            data = {"status":"up"}
+            self.send_tedge_message(
+                MappedMessage(json.dumps(data), topic), retain=True, qos=1
+            )
+
         # Add more topic-specific handlers as needed
         else:
             self.logger.debug("No specific handler for topic: %s", topic)
@@ -671,6 +678,26 @@ class ModbusPoll:
             MappedMessage(json.dumps(data), topic), retain=True, qos=1
         )
 
+        health_topic = "te/device/main/service/tedge-modbus-plugin/status/health"
+        health_data = {"status":"up"}
+        self.send_tedge_message(
+            MappedMessage(json.dumps(health_data), health_topic), retain=True, qos=1
+        )
+
+        actions_topic = "te/device/main/service/tedge-modbus-plugin/cmd/control"
+        actions_payload = {
+            "actions": [
+                "start",
+                "stop",
+                "restart",
+                "enable",
+                "disable"
+            ],
+            }
+        self.send_tedge_message(
+            MappedMessage(json.dumps(actions_payload), actions_topic), retain=True, qos=1
+        )
+
     def register_child_devices(self, devices):
         """Register the child devices with thin-edge.io"""
         for device in devices:
@@ -697,6 +724,20 @@ class ModbusPoll:
                     MappedMessage(cmd_payload, cmd_topic), retain=True, qos=1
                 )
 
+    def _handle_sigterm(self, sig, frame):
+        self.logger.warning('SIGTERM received...')
+        self.stop()
+
+    def stop(self):
+        """Stop the service"""
+        self.logger.info("Stopping tedge-modbus-plugin")
+        topic = "te/device/main/service/tedge-modbus-plugin/status/health"
+        data = {"status":"down"}
+        self.send_tedge_message(
+            MappedMessage(json.dumps(data), topic), retain=True, qos=1
+        )
+
+
 
 def main():
     """Main"""
@@ -716,9 +757,11 @@ def main():
         poll = ModbusPoll(config_dir or DEFAULT_FILE_DIR, args.logfile)
         poll.start_polling()
     except KeyboardInterrupt:
+        poll.stop()
         sys.exit(1)
     except Exception as main_err:
         logging.error("Unexpected error. %s", main_err, exc_info=True)
+        poll.stop()
         sys.exit(1)
 
 

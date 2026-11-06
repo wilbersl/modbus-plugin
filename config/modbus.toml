@@ -18,4 +18,5 @@ mqttport=1883
  subscribe_topics = [
      "te/device/+///cmd/modbus_SetRegister/+",
      "te/device/+///cmd/modbus_SetCoil/+",
+     "te/device/main/service/tedge-modbus-plugin/cmd/health/check",
  ]
